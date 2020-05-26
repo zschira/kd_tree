@@ -1,4 +1,3 @@
-extern crate num_traits;
 pub mod kd_tree;
 use crate::kd_tree::{Point, KdError};
 
