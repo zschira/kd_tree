@@ -29,17 +29,44 @@ impl Point for Vec<f64> {
 #[cfg(test)]
 mod tests {
     use super::kd_tree::KdTree;
+    use std::time::{Instant};
     #[test]
     fn it_works() {
-        let mut tree = KdTree::<Vec<f64>>::new(3);
-        tree.add_point(vec![0.5f64, 0.2f64, 0.1f64]);
-        tree.add_point(vec![1.0f64, 1.0f64, 1.0f64]);
-        tree.add_point(vec![2.0f64, 2.0f64, 2.0f64]);
-        tree.add_point(vec![-1.0f64, -1.0f64, -1.0f64]);
-        tree.add_point(vec![-2.0f64, -2.0f64, -2.0f64]);
-        tree.add_point(vec![3.0f64, 3.0f64, 3.0f64]);
-        tree.add_point(vec![-3.0f64, -3.0f64, -3.0f64]);
-        let search_result = tree.find_closest(vec![0.5f64, 0.2f64, 0.1f64]);
-        assert_eq!(search_result.is_ok(), true);
+        let mut tree = KdTree::<Vec<f64>>::with_capacity(3, 1_000_000);
+
+        println!("Constructing tree...");
+        let now = Instant::now();
+        for i in 1..1_000_000 {
+            tree.add_point(vec![rand::random::<f64>(), rand::random::<f64>(), rand::random::<f64>()]);
+        }
+        println!("Tree generated generated in {}us", now.elapsed().as_micros());
+
+        for i in 1..2 {
+            let query_point = vec![rand::random::<f64>(), rand::random::<f64>(), rand::random::<f64>()];
+
+            println!("Brute force");
+            let now = Instant::now();
+            let brute_result = tree.brute_force(&query_point);
+            println!("Brute force finished in {}us", now.elapsed().as_micros());
+
+            println!("KD-Search");
+            let now = Instant::now();
+            let search_result = tree.find_closest(&query_point);
+            println!("KD-Search finished in {}us", now.elapsed().as_micros());
+            
+            assert_eq!(search_result.is_ok(), true);
+            match search_result {
+                Ok((point, distance)) => {
+                    if let Ok((point_brute, dist_brute)) = brute_result {
+                        println!("KD: {}, BRUTE: {}", distance, dist_brute);
+                        assert!(distance == dist_brute);
+                        assert!(point[0] == point_brute[0]);
+                        assert!(point[1] == point_brute[1]);
+                        assert!(point[2] == point_brute[2]);
+                    }
+                },
+                Err(e) => { println!("{}", e); }
+            }
+        }
     }
 }
