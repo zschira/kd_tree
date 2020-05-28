@@ -37,7 +37,7 @@ pub struct KdTree<DataType> {
 
 impl<DataType: Point + Clone> KdTree<DataType> {
     pub fn new(dimensions: usize) -> Self {
-        // Default to capacity of 100 in no capacity is given
+        // Default to capacity of 100 if no capacity is given
         let mut new_tree = KdTree {
             tree: Vec::with_capacity(100),
             num_dimensions: dimensions,
