@@ -36,12 +36,18 @@ mod tests {
 
         println!("Constructing tree...");
         let now = Instant::now();
-        for i in 1..1_000_000 {
-            tree.add_point(vec![rand::random::<f64>(), rand::random::<f64>(), rand::random::<f64>()]);
+        for _i in 1..1_000_000 {
+            match tree.add_point(vec![rand::random::<f64>(), rand::random::<f64>(), rand::random::<f64>()]) {
+                Ok(()) => { },
+                Err(e) => {
+                    println!("Failed to add point: {}", e);
+                    assert!(false);
+                },
+            }
         }
         println!("Tree generated generated in {}us", now.elapsed().as_micros());
 
-        for i in 1..2 {
+        for _i in 1..2 {
             let query_point = vec![rand::random::<f64>(), rand::random::<f64>(), rand::random::<f64>()];
 
             println!("Brute force");
