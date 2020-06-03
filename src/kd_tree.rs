@@ -1,11 +1,38 @@
 use num_traits::Float;
 use std::marker::PhantomData;
+use std::collections::BinaryHeap;
+use std::cmp::Ordering;
 
 #[derive(Copy, Clone)]
 enum ChildType {
     RootNode,
     LeftChild,
     RightChild,
+}
+
+pub struct Closest<DataType, T> {
+    point: DataType,
+    distance: T,
+}
+
+impl<DataType, T: Float> Ord for Closest<DataType, T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+    }
+}
+
+impl<DataType, T: Float> PartialOrd for Closest<DataType, T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.distance.partial_cmp(&other.distance)
+    }
+}
+
+impl<DataType, T: Float> Eq for Closest<DataType, T> {}
+
+impl<DataType, T: Float> PartialEq for Closest<DataType, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.distance == other.distance
+    }
 }
 
 pub trait Point<T: Float> {
@@ -29,6 +56,7 @@ pub enum KdError {
     DimensionError,
     EmptyTree,
     NodeMissing,
+    BinaryHeapError,
 }
 
 pub struct KdTree<DataType, T> {
@@ -113,23 +141,33 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
     }
 
     pub fn find_closest(&self, query_point: &DataType) -> Result<(DataType, T), KdError> {
-        let mut min_distance: T = Float::max_value();
-        let mut closest_index = 0;
+        match self.find_n_closest(query_point, 1)?.pop() {
+            Some(closest) => { Ok((closest.point, closest.distance)) },
+            None => { Err(KdError::BinaryHeapError) },
+        }
+    }
+
+    pub fn find_n_closest(&self, query_point: &DataType, n: usize) -> Result<BinaryHeap<Closest<DataType, T>>, KdError> {
+        let mut bh_closest = BinaryHeap::with_capacity(n);
         let mut searched_table = vec![-1i64; self.max_levels + 1];
         let (mut index, mut child_type) = self.go_down(query_point, 1)?;
 
         while let Some(node) = &self.tree[index] {
             let distance = node.point.distance(query_point)?;
-            if distance < min_distance {
-                min_distance = distance;
-                closest_index = index;
+            if bh_closest.len() < n {
+                bh_closest.push(Closest { point: index, distance: distance, });
+            } else {
+                if distance < self.get_max_min(&bh_closest)? {
+                    bh_closest.pop();
+                    bh_closest.push(Closest { point: index, distance: distance, });
+                }
             }
             if searched_table[node.level] == index as i64 {
                 child_type = node.child_type;
                 index = node.parent;
             } else {
                 searched_table[node.level] = index as i64;
-                if node.point.split_plane(node.dimension).distance(&query_point.split_plane(node.dimension))? < min_distance {
+                if node.point.split_plane(node.dimension).distance(&query_point.split_plane(node.dimension))? < self.get_max_min(&bh_closest)? {
                     let sub_tree = match child_type {
                         ChildType::LeftChild => { node.right_child },
                         ChildType::RightChild => { node.left_child},
@@ -142,11 +180,16 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
             }
         }
 
-        if let Some(node) = &self.tree[closest_index] {
-            Ok((node.point.clone(), min_distance))
-        } else {
-            Err(KdError::NodeMissing)
+        let mut bh_dtype = BinaryHeap::with_capacity(n);
+        for closest in bh_closest.iter() {
+            if let Some(node) = &self.tree[closest.point] {
+                bh_dtype.push(Closest { point: node.point.clone(), distance: closest.distance });
+            } else {
+                return Err(KdError::NodeMissing);
+            }
         }
+
+        Ok(bh_dtype)
     }
 
     pub fn brute_force(&self, query_point: &DataType) -> Result<(DataType, T), KdError> {
@@ -190,6 +233,13 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
 
         Ok((index, child_type))
     }
+
+    fn get_max_min(&self, bh_closest: &BinaryHeap<Closest<usize, T>>) -> Result<T, KdError> {
+        match bh_closest.peek() {
+            Some(max) => { Ok(max.distance) },
+            None => { Err(KdError::BinaryHeapError) },
+        }
+    }
 }
 
 
@@ -199,6 +249,7 @@ impl std::error::Error for KdError {
             KdError::DimensionError => "dimension error",
             KdError::EmptyTree => "no nodes in tree",
             KdError::NodeMissing => "Cant access current node",
+            KdError::BinaryHeapError => "Error accessing binary heap",
         }
     }
 }
