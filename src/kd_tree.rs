@@ -1,3 +1,6 @@
+use num_traits::Float;
+use std::marker::PhantomData;
+
 #[derive(Copy, Clone)]
 enum ChildType {
     RootNode,
@@ -5,8 +8,8 @@ enum ChildType {
     RightChild,
 }
 
-pub trait Point {
-    fn distance(&self, other: &Self) -> Result<f64, KdError>;
+pub trait Point<T: Float> {
+    fn distance(&self, other: &Self) -> Result<T, KdError>;
     fn greater(&self, other: &Self, cur_dimesnion: usize) -> bool;
     fn split_plane(&self, cur_dimension: usize) -> Self;
 }
@@ -28,14 +31,15 @@ pub enum KdError {
     NodeMissing,
 }
 
-pub struct KdTree<DataType> {
+pub struct KdTree<DataType, T> {
     tree: Vec<Option<Node<DataType>>>,
     num_dimensions: usize,
     max_levels: usize,
     last_point: usize,
+    float_type: PhantomData<T>,
 }
 
-impl<DataType: Point + Clone> KdTree<DataType> {
+impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
     pub fn new(dimensions: usize) -> Self {
         // Default to capacity of 100 in no capacity is given
         let mut new_tree = KdTree {
@@ -43,6 +47,7 @@ impl<DataType: Point + Clone> KdTree<DataType> {
             num_dimensions: dimensions,
             max_levels: 0,
             last_point: 1,
+            float_type: PhantomData,
         };
         new_tree.tree.resize_with(100, Default::default);
         new_tree
@@ -54,6 +59,7 @@ impl<DataType: Point + Clone> KdTree<DataType> {
             num_dimensions: dimensions,
             max_levels: 0,
             last_point: 1,
+            float_type: PhantomData,
         };
         new_tree.tree.resize_with(capacity, Default::default);
         new_tree
@@ -106,8 +112,8 @@ impl<DataType: Point + Clone> KdTree<DataType> {
         Ok(())
     }
 
-    pub fn find_closest(&self, query_point: &DataType) -> Result<(DataType, f64), KdError> {
-        let mut min_distance = std::f64::MAX;
+    pub fn find_closest(&self, query_point: &DataType) -> Result<(DataType, T), KdError> {
+        let mut min_distance: T = Float::max_value();
         let mut closest_index = 0;
         let mut searched_table = vec![-1i64; self.max_levels + 1];
         let (mut index, mut child_type) = self.go_down(query_point, 1)?;
@@ -143,8 +149,8 @@ impl<DataType: Point + Clone> KdTree<DataType> {
         }
     }
 
-    pub fn brute_force(&self, query_point: &DataType) -> Result<(DataType, f64), KdError> {
-        let mut min_distance = std::f64::MAX;
+    pub fn brute_force(&self, query_point: &DataType) -> Result<(DataType, T), KdError> {
+        let mut min_distance: T = Float::max_value();
         let mut index = 0;
         for (cur_ind, node) in self.tree.iter().enumerate() {
             if let Some(cur_node) = node {

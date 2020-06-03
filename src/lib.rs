@@ -1,7 +1,8 @@
 pub mod kd_tree;
 use crate::kd_tree::{Point, KdError};
+extern crate num_traits;
 
-impl Point for Vec<f64> {
+impl Point<f64> for Vec<f64> {
     fn distance(&self, other: &Self) -> Result<f64, KdError> {
         if self.len() != other.len() {
             return Err(KdError::DimensionError);
@@ -32,7 +33,7 @@ mod tests {
     use std::time::{Instant};
     #[test]
     fn it_works() {
-        let mut tree = KdTree::<Vec<f64>>::with_capacity(3, 1_000_000);
+        let mut tree = KdTree::<Vec<f64>, f64>::with_capacity(3, 1_000_000);
 
         println!("Constructing tree...");
         let now = Instant::now();
