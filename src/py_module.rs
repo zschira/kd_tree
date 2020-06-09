@@ -26,6 +26,16 @@ impl PyTree {
         }
     }
 
+    #[new]
+    fn create_tree(points: &PyArray2<f64>) -> PyResult<Self> {
+        let shape = points.shape();
+        let mut tree = PyTree { tree: KdTree::with_capacity(shape[1], shape[0]) };
+        match tree.add_points(points) {
+            Ok(()) => { Ok(tree) },
+            Err(e) => { Err(e) },
+        }
+    }
+
     fn add_point(&mut self, point: &PyArray1<f64>) -> PyResult<()> {
         match self.tree.add_point(point.to_owned_array()) {
             Ok(()) => { Ok(()) },
