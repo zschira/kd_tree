@@ -39,6 +39,7 @@ pub trait Point<T: Float> {
     fn distance(&self, other: &Self) -> Result<T, KdError>;
     fn greater(&self, other: &Self, cur_dimesnion: usize) -> bool;
     fn split_plane(&self, cur_dimension: usize) -> Self;
+    fn dimensions(&self) -> usize;
 }
 
 struct Node<DataType> {
@@ -94,6 +95,8 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
     }
 
     pub fn add_point(&mut self, query_point: DataType) -> Result<(), KdError> {
+        if query_point.dimensions() != self.num_dimensions { return Err(KdError::DimensionError); }
+
         let (parent_index, child_type) = if self.tree[1].is_none() {
             (0, ChildType::RootNode)
         } else {
@@ -243,21 +246,15 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
 }
 
 
-impl std::error::Error for KdError {
-    fn description(&self) -> &str {
-        match *self {
+impl std::fmt::Display for KdError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let description = match *self {
             KdError::DimensionError => "dimension error",
             KdError::EmptyTree => "no nodes in tree",
             KdError::NodeMissing => "Cant access current node",
             KdError::BinaryHeapError => "Error accessing binary heap",
-        }
-    }
-}
-
-impl std::fmt::Display for KdError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        use std::error::Error;
-        write!(f, "KdTree error: {}", self.description())
+        };
+        write!(f, "KdTree error: {}", description)
     }
 }
 

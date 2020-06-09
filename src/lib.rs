@@ -2,6 +2,14 @@ pub mod kd_tree;
 use crate::kd_tree::{Point, KdError};
 extern crate num_traits;
 
+// Include python module if feature is enabled
+#[cfg(feature="default")]
+pub mod py_module;
+#[cfg(feature="default")]
+extern crate ndarray;
+#[cfg(feature="default")]
+use ndarray::Array1;
+
 impl Point<f64> for Vec<f64> {
     fn distance(&self, other: &Self) -> Result<f64, KdError> {
         if self.len() != other.len() {
@@ -25,6 +33,8 @@ impl Point<f64> for Vec<f64> {
         plane[cur_dimension] = self[cur_dimension];
         plane
     }
+
+    fn dimensions(&self) -> usize { self.len() }
 }
 
 impl Point<f32> for Vec<f32> {
@@ -50,6 +60,36 @@ impl Point<f32> for Vec<f32> {
         plane[cur_dimension] = self[cur_dimension];
         plane
     }
+
+    fn dimensions(&self) -> usize { self.len() }
+}
+
+#[cfg(feature="default")]
+impl Point<f64> for Array1<f64> {
+    fn distance(&self, other: &Self) -> Result<f64, KdError> {
+        if self.len() != other.len() {
+            return Err(KdError::DimensionError);
+        }
+
+        let mut distance = 0f64;
+        for i in 0..self.len() {
+            let diff = self[i] - other[i];
+            distance += diff * diff; 
+        }
+        Ok(distance.sqrt())
+    }
+
+    fn greater(&self, other: &Self, cur_dimension: usize) -> bool {
+        self[cur_dimension] > other[cur_dimension]
+    }
+
+    fn split_plane(&self, cur_dimension: usize) -> Array1<f64> {
+        let mut plane = Array1::zeros(self.len());
+        plane[cur_dimension] = self[cur_dimension];
+        plane
+    }
+
+    fn dimensions(&self) -> usize { self.len() }
 }
 
 #[cfg(test)]
