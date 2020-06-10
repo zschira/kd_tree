@@ -260,6 +260,8 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
             None => { Err(KdError::BinaryHeapError) },
         }
     }
+
+    pub fn get_num_dimensions(&self) -> usize { self.num_dimensions }
 }
 
 
