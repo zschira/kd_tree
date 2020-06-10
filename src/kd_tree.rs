@@ -11,8 +11,8 @@ enum ChildType {
 }
 
 pub struct Closest<DataType, T> {
-    point: DataType,
-    distance: T,
+    pub point: DataType,
+    pub distance: T,
 }
 
 impl<DataType, T: Float> Ord for Closest<DataType, T> {
@@ -156,6 +156,13 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
         let (mut index, mut child_type) = self.go_down(query_point, 1)?;
 
         while let Some(node) = &self.tree[index] {
+            if searched_table[node.level] == index as i64 {
+                child_type = node.child_type;
+                index = node.parent;
+                continue;
+            }
+
+            // Check node
             let distance = node.point.distance(query_point)?;
             if bh_closest.len() < n {
                 bh_closest.push(Closest { point: index, distance: distance, });
@@ -165,21 +172,21 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
                     bh_closest.push(Closest { point: index, distance: distance, });
                 }
             }
-            if searched_table[node.level] == index as i64 {
-                child_type = node.child_type;
-                index = node.parent;
-            } else {
-                searched_table[node.level] = index as i64;
-                if node.point.split_plane(node.dimension).distance(&query_point.split_plane(node.dimension))? < self.get_max_min(&bh_closest)? {
-                    let sub_tree = match child_type {
-                        ChildType::LeftChild => { node.right_child },
-                        ChildType::RightChild => { node.left_child},
-                        ChildType::RootNode => { 0 },
-                    };
 
-                    let go_down_result = self.go_down(query_point, sub_tree);
-                    if let Ok((cur_ind, cur_child)) = go_down_result { index = cur_ind; child_type = cur_child; }
-                }
+            // Update table to avoid checking node again
+            searched_table[node.level] = index as i64;
+
+            // See if distance to split plane is less than min to see if other subtree needs to be
+            // searched
+            if node.point.split_plane(node.dimension).distance(&query_point.split_plane(node.dimension))? < self.get_max_min(&bh_closest)? {
+                let sub_tree = match child_type {
+                    ChildType::LeftChild => { node.right_child },
+                    ChildType::RightChild => { node.left_child},
+                    ChildType::RootNode => { 0 },
+                };
+
+                let go_down_result = self.go_down(query_point, sub_tree);
+                if let Ok((cur_ind, cur_child)) = go_down_result { index = cur_ind; child_type = cur_child; }
             }
         }
 
@@ -195,24 +202,34 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
         Ok(bh_dtype)
     }
 
-    pub fn brute_force(&self, query_point: &DataType) -> Result<(DataType, T), KdError> {
+    pub fn brute_force(&self, query_point: &DataType, n: usize) -> Result<BinaryHeap<Closest<DataType, T>>, KdError> {
         let mut min_distance: T = Float::max_value();
+        let mut bh_closest = BinaryHeap::with_capacity(n);
         let mut index = 0;
         for (cur_ind, node) in self.tree.iter().enumerate() {
             if let Some(cur_node) = node {
                 let distance = cur_node.point.distance(query_point)?;
-                if distance < min_distance {
-                    min_distance = distance;
-                    index = cur_ind;
+                if bh_closest.len() < n {
+                    bh_closest.push(Closest { point: index, distance: distance, });
+                } else {
+                    if distance < self.get_max_min(&bh_closest)? {
+                        bh_closest.pop();
+                        bh_closest.push(Closest { point: index, distance: distance, });
+                    }
                 }
             }
         }
 
-        if let Some(node) = &self.tree[index] {
-            Ok((node.point.clone(), min_distance))
-        } else {
-            Err(KdError::NodeMissing)
+        let mut bh_dtype = BinaryHeap::with_capacity(n);
+        for closest in bh_closest.iter() {
+            if let Some(node) = &self.tree[closest.point] {
+                bh_dtype.push(Closest { point: node.point.clone(), distance: closest.distance });
+            } else {
+                return Err(KdError::NodeMissing);
+            }
         }
+
+        Ok(bh_dtype)
     }
 
     fn go_down(&self, query_point: &DataType, root: usize) -> Result<(usize, ChildType), KdError> {

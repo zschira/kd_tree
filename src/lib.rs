@@ -118,26 +118,24 @@ mod tests {
 
             println!("Brute force");
             let now = Instant::now();
-            let brute_result = tree.brute_force(&query_point);
+            let brute_result = tree.brute_force(&query_point, 10);
             println!("Brute force finished in {}us", now.elapsed().as_micros());
 
             println!("KD-Search");
             let now = Instant::now();
-            let search_result = tree.find_closest(&query_point);
+            let search_result = tree.find_n_closest(&query_point, 10);
             println!("KD-Search finished in {}us", now.elapsed().as_micros());
             
             assert_eq!(search_result.is_ok(), true);
-            match search_result {
-                Ok((point, distance)) => {
-                    if let Ok((point_brute, dist_brute)) = brute_result {
-                        println!("KD: {}, BRUTE: {}", distance, dist_brute);
-                        assert!(distance == dist_brute);
-                        assert!(point[0] == point_brute[0]);
-                        assert!(point[1] == point_brute[1]);
-                        assert!(point[2] == point_brute[2]);
+            if let (Ok(mut kd_search), Ok(mut brute_search)) = (search_result, brute_result) {
+                for _i in 0..kd_search.len() {
+                    if let (Some(kd_closest), Some(brute_closest)) = (kd_search.pop(), brute_search.pop()) {
+                        assert!(kd_closest.distance == brute_closest.distance);
+                        assert!(kd_closest.point[0] == brute_closest.point[0]);
+                        assert!(kd_closest.point[1] == brute_closest.point[1]);
+                        assert!(kd_closest.point[2] == brute_closest.point[2]);
                     }
-                },
-                Err(e) => { println!("{}", e); }
+                }
             }
         }
     }
@@ -164,26 +162,24 @@ mod tests {
 
             println!("Brute force");
             let now = Instant::now();
-            let brute_result = tree.brute_force(&query_point);
+            let brute_result = tree.brute_force(&query_point, 10);
             println!("Brute force finished in {}us", now.elapsed().as_micros());
 
             println!("KD-Search");
             let now = Instant::now();
-            let search_result = tree.find_closest(&query_point);
+            let search_result = tree.find_n_closest(&query_point, 10);
             println!("KD-Search finished in {}us", now.elapsed().as_micros());
             
             assert_eq!(search_result.is_ok(), true);
-            match search_result {
-                Ok((point, distance)) => {
-                    if let Ok((point_brute, dist_brute)) = brute_result {
-                        println!("KD: {}, BRUTE: {}", distance, dist_brute);
-                        assert!(distance == dist_brute);
-                        assert!(point[0] == point_brute[0]);
-                        assert!(point[1] == point_brute[1]);
-                        assert!(point[2] == point_brute[2]);
+            if let (Ok(mut kd_search), Ok(mut brute_search)) = (search_result, brute_result) {
+                for _i in 0..kd_search.len() {
+                    if let (Some(kd_closest), Some(brute_closest)) = (kd_search.pop(), brute_search.pop()) {
+                        assert!(kd_closest.distance == brute_closest.distance);
+                        assert!(kd_closest.point[0] == brute_closest.point[0]);
+                        assert!(kd_closest.point[1] == brute_closest.point[1]);
+                        assert!(kd_closest.point[2] == brute_closest.point[2]);
                     }
-                },
-                Err(e) => { println!("{}", e); }
+                }
             }
         }
     }
