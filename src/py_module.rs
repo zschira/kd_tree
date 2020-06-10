@@ -13,15 +13,15 @@ impl From<KdError> for PyErr {
 }
 
 #[pyclass]
-pub struct PyTree {
+pub struct Tree {
     tree: KdTree<Array1<f64>, f64>,
 }
 
 #[pymethods]
-impl PyTree {
+impl Tree {
     #[new]
     fn new(dimensions: usize, num_nodes: usize) -> Self {
-        PyTree {
+        Tree {
             tree: KdTree::with_capacity(dimensions, num_nodes),
         }
     }
@@ -29,7 +29,7 @@ impl PyTree {
     #[new]
     fn create_tree(points: &PyArray2<f64>) -> PyResult<Self> {
         let shape = points.shape();
-        let mut tree = PyTree { tree: KdTree::with_capacity(shape[1], shape[0]) };
+        let mut tree = Tree { tree: KdTree::with_capacity(shape[1], shape[0]) };
         match tree.add_points(points) {
             Ok(()) => { Ok(tree) },
             Err(e) => { Err(e) },
@@ -64,5 +64,5 @@ impl PyTree {
 
 #[pymodule]
 fn kd_tree(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<PyTree>()
+    m.add_class::<Tree>()
 }
