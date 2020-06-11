@@ -4,7 +4,7 @@ use std::collections::BinaryHeap;
 use std::cmp::Ordering;
 
 #[derive(Copy, Clone)]
-enum ChildType {
+enum NodeType {
     RootNode,
     LeftChild,
     RightChild,
@@ -44,7 +44,7 @@ pub trait Point<T: Float> {
 
 struct Node<DataType> {
     point: DataType,
-    child_type: ChildType,
+    child_type: NodeType,
     parent: usize,
     left_child: usize,
     right_child: usize,
@@ -98,7 +98,7 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
         if query_point.dimensions() != self.num_dimensions { return Err(KdError::DimensionError); }
 
         let (parent_index, child_type) = if self.tree[1].is_none() {
-            (0, ChildType::RootNode)
+            (0, NodeType::RootNode)
         } else {
             self.go_down(&query_point, 1)?
         };
@@ -108,9 +108,9 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
         } else {
             if let Some(node) = &mut self.tree[parent_index] {
                 match child_type {
-                    ChildType::LeftChild => { node.left_child = self.last_point; },
-                    ChildType::RightChild => { node.right_child = self.last_point; },
-                    ChildType::RootNode => { },
+                    NodeType::LeftChild => { node.left_child = self.last_point; },
+                    NodeType::RightChild => { node.right_child = self.last_point; },
+                    NodeType::RootNode => { },
                 }
 
                 ((node.dimension + 1) % self.num_dimensions, node.level + 1)
@@ -180,9 +180,9 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
             // searched
             if node.point.split_plane(node.dimension).distance(&query_point.split_plane(node.dimension))? < self.get_max_min(&bh_closest)? {
                 let sub_tree = match child_type {
-                    ChildType::LeftChild => { node.right_child },
-                    ChildType::RightChild => { node.left_child},
-                    ChildType::RootNode => { 0 },
+                    NodeType::LeftChild => { node.right_child },
+                    NodeType::RightChild => { node.left_child},
+                    NodeType::RootNode => { 0 },
                 };
 
                 let go_down_result = self.go_down(query_point, sub_tree);
@@ -230,22 +230,22 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
         Ok(bh_dtype)
     }
 
-    fn go_down(&self, query_point: &DataType, root: usize) -> Result<(usize, ChildType), KdError> {
+    fn go_down(&self, query_point: &DataType, root: usize) -> Result<(usize, NodeType), KdError> {
         if self.tree[root].is_none() {
             return Err(KdError::EmptyTree);
         }
 
         let mut current_index = root;
         let mut index = current_index;
-        let mut child_type = ChildType::LeftChild;
+        let mut child_type = NodeType::LeftChild;
         while let Some(node) = &self.tree[current_index] {
             index = current_index;
             if node.point.greater(query_point, node.dimension) {
                 current_index = node.left_child;
-                child_type = ChildType::LeftChild;
+                child_type = NodeType::LeftChild;
             } else {
                 current_index = node.right_child;
-                child_type = ChildType::RightChild;
+                child_type = NodeType::RightChild;
             }
         };
 
