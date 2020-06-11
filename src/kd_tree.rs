@@ -203,18 +203,16 @@ impl<T: Float, DataType: Point<T> + Clone> KdTree<DataType, T> {
     }
 
     pub fn brute_force(&self, query_point: &DataType, n: usize) -> Result<BinaryHeap<Closest<DataType, T>>, KdError> {
-        let mut min_distance: T = Float::max_value();
         let mut bh_closest = BinaryHeap::with_capacity(n);
-        let mut index = 0;
         for (cur_ind, node) in self.tree.iter().enumerate() {
             if let Some(cur_node) = node {
                 let distance = cur_node.point.distance(query_point)?;
                 if bh_closest.len() < n {
-                    bh_closest.push(Closest { point: index, distance: distance, });
+                    bh_closest.push(Closest { point: cur_ind, distance: distance, });
                 } else {
                     if distance < self.get_max_min(&bh_closest)? {
                         bh_closest.pop();
-                        bh_closest.push(Closest { point: index, distance: distance, });
+                        bh_closest.push(Closest { point: cur_ind, distance: distance, });
                     }
                 }
             }
